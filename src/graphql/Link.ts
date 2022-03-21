@@ -6,6 +6,21 @@ export const Link = objectType({
         t.nonNull.int('id')
         t.nonNull.string('description')
         t.nonNull.string('url')
+        t.nonNull.dateTime('createdAt')
+        t.field('postedBy', {
+            type: 'User',
+            resolve(parent, args, context) {
+                return context.prisma.link.findUnique({where: {id: parent.id}}).postedBy()
+            }
+        })
+        t.nonNull.list.nonNull.field('voters', {
+            type: 'User',
+            resolve(parent, args, context) {
+                return context.prisma.link
+                    .findUnique({ where: { id: parent.id }})
+                    .voters()
+            }
+        })
     }
 })  
 
@@ -46,10 +61,15 @@ export const LinkMutation = extendType({
             },
             resolve(parent, args, context, info) {
                 const { description, url } = args
+                const { userId } = context
+                if (!userId) {
+                    throw new Error("Invalid Credentials")
+                }
                 const newLink = context.prisma.link.create({
                     data: {
                         description,
-                        url
+                        url,
+                        postedBy: { connect: { id: userId }}
                     }
                 })
                 return newLink
